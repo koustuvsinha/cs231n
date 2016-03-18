@@ -181,13 +181,17 @@ class FullyConnectedNet(object):
     # beta2, etc. Scale parameters should be initialized to one and shift      #
     # parameters should be initialized to zero.                                #
     ############################################################################
-    self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dims[0])
-    self.params['b1'] = np.zeros(hidden_dims[0])
-    for i in range(1,len(hidden_dims)):
-      self.params['W'+`(i+1)`] = weight_scale * np.random.randn(hidden_dims[i - 1], hidden_dims[i])
-      self.params['b'+`(i+1)`] = np.zeros(hidden_dims[i])
-    self.params['W'+`len(hidden_dims) + 1`] = weight_scale * np.random.randn(hidden_dims[-1], num_classes)
-    self.params['b'+`len(hidden_dims) + 1`] = np.zeros(num_classes)
+    # print len(hidden_dims)
+    for i in xrange(self.num_layers):
+      if i == 0:
+        self.params['W' + `i + 1`] = np.random.normal(0.0, weight_scale, (input_dim, hidden_dims[i]))
+        self.params['b' + `i + 1`] = np.random.normal(0.0, weight_scale, (hidden_dims[i],))
+      elif i == self.num_layers - 1:
+        self.params['W' + `i + 1`] = np.random.normal(0.0, weight_scale, (hidden_dims[i - 1], num_classes))
+        self.params['b' + `i + 1`] = np.random.normal(0.0, weight_scale, (num_classes,))
+      else :
+        self.params['W'+`(i+1)`] = np.random.normal(0.0, weight_scale, (hidden_dims[i - 1], hidden_dims[i]))
+        self.params['b'+`(i+1)`] = np.random.normal(0.0, weight_scale, (hidden_dims[i],))
     #print self.params['W1'].shape
     #print self.params['W2'].shape
     #print self.params['W3'].shape
@@ -250,14 +254,23 @@ class FullyConnectedNet(object):
     ############################################################################
     inp = X
     caches = []
-    for i in range(1,self.num_layers):
-      a, fc_cache = affine_forward(inp, self.params['W'+`i`], self.params['b'+`i`])
-      out, relu_cache = relu_forward(a)
-      cache = (fc_cache, relu_cache)
+    for i in xrange(self.num_layers):
+      #a, fc_cache = affine_forward(inp, self.params['W'+`i`], self.params['b'+`i`])
+      #out, relu_cache = relu_forward(a)
+      #cache = (fc_cache, relu_cache)
+
+      Wi = 'W'+`i + 1`
+      bi = 'b'+`i + 1`
+
+      if i == self.num_layers - 1 :
+        out, cache = affine_forward(inp, self.params[Wi], self.params[bi])
+      else :
+        out, cache = affine_relu_forward(inp, self.params[Wi], self.params[bi])
+      
       caches.append(cache)
       inp = out
-    out2,cache2 = affine_forward(out,self.params['W'+`(self.num_layers)`], self.params['b' + `(self.num_layers)`])
-    scores = out2
+    # out2,cache2 = affine_forward(out,self.params['W'+`(self.num_layers)`], self.params['b' + `(self.num_layers)`])
+    scores = out
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -291,15 +304,22 @@ class FullyConnectedNet(object):
     # backprop
     hid = {}
 
-    dx,dw,hid['b' + `(self.num_layers)`] = affine_backward(dscores, cache2)
-    dw += self.reg * self.params['W' + `(self.num_layers)`]
-    hid['W' + `(self.num_layers)`] = dw
-    #print len(caches)
-    for i in range(self.num_layers - 1,0,-1):
-      dx, dw1, db1 = affine_relu_backward(dx, caches[i - 1])
-      #dw1 += self.reg * self.params['W' + `i`]
-      hid['W' + `i`] = dw1
-      hid['b' + `i`] = db1
+    #dx,dw,hid['b' + `(self.num_layers)`] = affine_backward(dscores, cache2)
+    #dw += self.reg * self.params['W' + `(self.num_layers)`]
+    #hid['W' + `(self.num_layers)`] = dw
+    temp = dscores
+
+    for i in range(self.num_layers,0,-1):
+      Wi = 'W' + `i`
+      bi = 'b' + `i`
+
+      if i == self.num_layers :
+        dx, hid[Wi], hid[bi] = affine_backward(temp, caches[i - 1])
+        # hid[Wi] += self.params[Wi] * self.reg
+      else :
+        dx, hid[Wi], hid[bi] = affine_relu_backward(temp, caches[i - 1])
+      hid[Wi] += self.params[Wi] * self.reg
+      temp = dx
 
     #print grads['W1']
     grads = {}
